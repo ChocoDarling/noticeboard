@@ -1,79 +1,94 @@
 import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
+import { connect } from 'react-redux';
 import {
   changeField,
   initializeFrom,
   addUserList,
   login,
-  logout,
   setErrorText,
 } from '../modules/auth';
 import Auth from '../components/Auth';
 
-function AuthContainer() {
-  const dispatch = useDispatch();
-  const loginForm = useSelector(({ auth }) => auth.login);
-  const registerForm = useSelector(({ auth }) => auth.register);
-  const userList = useSelector(({ userList }) => userList);
-
-  function onChange(e) {
-    const { value, name } = e.target;
-    const form = e.target.parentNode.name;
-    dispatch(changeField({ form: form, key: name, value }));
+class AuthContainer extends React.Component {
+  constructor(props) {
+    super(props);
+    this.onChange = this.onChange.bind(this);
+    this.onSubmit = this.onSubmit.bind(this);
   }
 
-  function onSubmit(e) {
+  componentDidMount() {
+    this.changeField = this.props.changeField;
+    this.initializeFrom = this.props.initializeFrom;
+    this.addUserList = this.props.addUserList;
+    this.login = this.props.login;
+    this.logout = this.props.logout;
+    this.setErrorText = this.props.setErrorText;
+  }
+
+  onSubmit(e) {
     e.preventDefault();
+    const userList = this.props.userList;
+    let errorText = '';
     if (e.target.name === 'register') {
       if (e.target.password.value !== e.target.passwordConfirm.value) {
-        dispatch(setErrorText('비밀번호를 확인해주세요.'));
+        errorText = '비밀번호를 확인해주세요.';
+      } else if (userList.find((v) => v.username === e.target.username.value)) {
+        errorText = '이미 존재하는 아이디입니다.';
+      } else if (!e.target.username.value || !e.target.password.value) {
+        errorText = '빈칸을 확인해주세요.';
+      }
+      if (errorText) {
+        this.setErrorText(e.target.name, errorText);
         return;
       }
-
-      if (userList.find((v) => v.username === e.target.username.value)) {
-        dispatch(setErrorText('이미 존재하는 아이디입니다.'));
-        return;
-      }
-
-      if (!e.target.username.value || !e.target.password.value) {
-        dispatch(setErrorText('빈칸을 확인해주세요.'));
-        return;
-      }
-
-      dispatch(
-        addUserList({
-          username: e.target.username.value,
-          password: e.target.password.value,
-        }),
-      );
+      this.addUserList({
+        username: e.target.username.value,
+        password: e.target.password.value,
+      });
+      alert('회원가입이 성공하셨습니다.');
     } else if (e.target.name === 'login') {
       const user = userList.find((v) => v.username === e.target.username.value);
       if (!user) {
-        dispatch(setErrorText('존재하지 않는 아이디입니다.'));
+        errorText = '존재하지 않는 아이디입니다.';
         return;
       }
       if (user.password !== e.target.password.value) {
-        dispatch(setErrorText('비밀번호가 다릅니다.'));
+        errorText = '비밀번호가 다릅니다.';
+      }
+      if (errorText) {
+        this.setErrorText(e.target.name, errorText);
         return;
       }
-      dispatch(login(user.username));
+      this.login(user.username);
     }
-
-    dispatch(initializeFrom({ form: e.target.name }));
-  }
-  function onClick(e) {
-    dispatch(logout());
+    this.initializeFrom();
   }
 
-  return (
-    <Auth
-      form={{ loginForm, registerForm }}
-      onChange={onChange}
-      onSubmitLogIn={onSubmit}
-      onSubmitRegister={onSubmit}
-      onClick={onClick}
-    />
-  );
+  onChange(e) {
+    const { value, name } = e.target;
+    const form = e.target.parentNode.name;
+    this.changeField({ form: form, key: name, value });
+  }
+
+  render() {
+    const { login, register } = this.props.auth;
+    return (
+      <Auth
+        form={{ login, register }}
+        onChange={this.onChange}
+        onSubmit={this.onSubmit}
+      />
+    );
+  }
 }
 
-export default AuthContainer;
+export default connect(
+  (state) => ({ auth: state.auth, userList: state.userList }),
+  {
+    changeField,
+    initializeFrom,
+    addUserList,
+    login,
+    setErrorText,
+  },
+)(AuthContainer);

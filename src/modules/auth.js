@@ -17,18 +17,20 @@ export const changeField = createAction(
   }),
 );
 
-export const initializeFrom = createAction(INITIALIZE_FORM, (form) => form);
+export const initializeFrom = createAction(INITIALIZE_FORM);
 export const login = createAction(LOGIN, (username) => username);
 export const logout = createAction(INITIALIZE_USERNAME);
-export const setErrorText = createAction(ERRORTEXT, (errorText) => errorText);
+export const setErrorText = createAction(ERRORTEXT, ({ form, errorText }) => ({
+  form,
+  errorText,
+}));
 export const addUserList = createAction(USERLIST, (user) => user);
 
 const initialState = {
   id: 1,
   username: '',
-  register: { username: '', password: '', passwordConfirm: '' },
-  login: { username: '', password: '' },
-  errorText: '',
+  register: { username: '', password: '', passwordConfirm: '', errorText: '' },
+  login: { username: '', password: '', errorText: '' },
 };
 const uesrListInitialState = [];
 
@@ -38,18 +40,18 @@ const auth = handleActions(
       produce(state, (draft) => {
         draft[form][key] = value;
       }),
-    [INITIALIZE_FORM]: (state, { payload: { form } }) =>
+    [INITIALIZE_FORM]: (state, action) =>
       produce(state, (draft) => {
-        draft[form] = initialState[form];
-        draft.errorText = initialState.errorText;
+        draft.login = initialState.login;
+        draft.register = initialState.register;
       }),
     [LOGIN]: (state, { payload: username }) =>
       produce(state, (draft) => {
         draft.username = username;
       }),
-    [ERRORTEXT]: (state, { payload: errorText }) =>
+    [ERRORTEXT]: (state, { payload: { form, errorText } }) =>
       produce(state, (draft) => {
-        draft.errorText = errorText;
+        draft[form].errorText = errorText;
       }),
     [INITIALIZE_USERNAME]: (state, action) =>
       produce(state, (draft) => {

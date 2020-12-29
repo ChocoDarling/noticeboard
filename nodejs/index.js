@@ -9,8 +9,6 @@ app.use(cors());
 app.use('/', express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// const upload = multer({ dest: 'public/' }).single('upload');
-
 const upload = multer({
   storage: multer.diskStorage({
     destination(req, file, done) {

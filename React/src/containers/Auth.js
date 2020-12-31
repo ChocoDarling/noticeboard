@@ -1,10 +1,11 @@
 import React from 'react';
 import { connect } from 'react-redux';
+import axios from 'axios';
 import {
   changeField,
   initializeFrom,
-  addUserList,
   login,
+  logout,
   setErrorText,
 } from '../modules/auth';
 import Auth from '../components/Auth';
@@ -14,60 +15,92 @@ class AuthContainer extends React.Component {
     super(props);
     this.onChange = this.onChange.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
+    this.onClick = this.onClick.bind(this);
   }
 
   componentDidMount() {
     this.changeField = this.props.changeField;
     this.initializeFrom = this.props.initializeFrom;
-    this.addUserList = this.props.addUserList;
     this.login = this.props.login;
     this.logout = this.props.logout;
     this.setErrorText = this.props.setErrorText;
   }
 
-  onSubmit(e) {
+  async onSubmit(e) {
     e.preventDefault();
-    const userList = this.props.userList;
     let errorText = '';
     if (e.target.name === 'register') {
       if (e.target.password.value !== e.target.passwordConfirm.value) {
         errorText = '비밀번호를 확인해주세요.';
-      } else if (userList.find((v) => v.username === e.target.username.value)) {
-        errorText = '이미 존재하는 아이디입니다.';
       } else if (!e.target.username.value || !e.target.password.value) {
         errorText = '빈칸을 확인해주세요.';
       }
       if (errorText) {
-        this.setErrorText(e.target.name, errorText);
+        this.setErrorText({
+          form: e.target.name,
+          errorText,
+        });
         return;
       }
-      this.addUserList({
-        username: e.target.username.value,
-        password: e.target.password.value,
-      });
-      alert('회원가입이 성공하셨습니다.');
+      axios
+        .post('/api/auth/register', {
+          username: e.target.username.value,
+          password: e.target.password.value,
+        })
+        .then((user) => {
+          if (user.data === 'exist username') {
+            this.setErrorText({
+              form: e.target.name,
+              errorText: '이미 존재하는 아이디입니다.',
+            });
+            return;
+          } else {
+            this.login(user.data);
+            alert('회원가입이 성공하셨습니다.');
+            this.initializeFrom();
+            this.props.history.push('/commentList/1');
+          }
+        });
     } else if (e.target.name === 'login') {
-      const user = userList.find((v) => v.username === e.target.username.value);
-      if (!user) {
-        errorText = '존재하지 않는 아이디입니다.';
-        return;
+      if (!e.target.username.value || !e.target.password.value) {
+        errorText = '빈칸을 확인해주세요.';
       }
-      if (user.password !== e.target.password.value) {
-        errorText = '비밀번호가 다릅니다.';
-      }
-      if (errorText) {
-        this.setErrorText(e.target.name, errorText);
-        return;
-      }
-      this.login(user.username);
+      axios
+        .post('/api/auth/login', {
+          username: e.target.username.value,
+          password: e.target.password.value,
+        })
+        .then((user) => {
+          if (user.data === 'not found') {
+            errorText = '존재하지 않는 아이디입니다.';
+          } else if (user.data === 'not match password') {
+            errorText = '비밀번호가 다릅니다.';
+          } else {
+            this.login(user.data);
+            alert('로그인이 성공하셨습니다.');
+            this.initializeFrom();
+            this.props.history.push('/commentList/1');
+          }
+          if (errorText) {
+            this.setErrorText({ form: e.target.name, errorText });
+            return;
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        });
     }
-    this.initializeFrom();
   }
 
   onChange(e) {
     const { value, name } = e.target;
     const form = e.target.parentNode.name;
     this.changeField({ form: form, key: name, value });
+  }
+
+  onClick(e) {
+    this.logout();
+    this.props.history.push('/');
   }
 
   render() {
@@ -77,18 +110,16 @@ class AuthContainer extends React.Component {
         form={{ login, register }}
         onChange={this.onChange}
         onSubmit={this.onSubmit}
+        onClick={this.onClick}
       />
     );
   }
 }
 
-export default connect(
-  (state) => ({ auth: state.auth, userList: state.userList }),
-  {
-    changeField,
-    initializeFrom,
-    addUserList,
-    login,
-    setErrorText,
-  },
-)(AuthContainer);
+export default connect((state) => ({ auth: state.auth }), {
+  changeField,
+  initializeFrom,
+  login,
+  logout,
+  setErrorText,
+})(AuthContainer);
